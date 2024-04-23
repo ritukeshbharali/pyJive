@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 
 class Constrainer:
@@ -16,20 +17,16 @@ class Constrainer:
             self._vals.append(val - self._state0[dof])
 
     def constrain(self, k, f):
-        kc = np.copy(k)
-        fc = np.copy(f)
 
         for dof, val in zip(self._dofs, self._vals):
-            for i in range(kc.shape[0]):
+            for i in range(k.get_shape()[0]):
                 if i == dof:
-                    fc[i] = val
+                    f[i] = val
                 else:
-                    fc[i] -= kc[i, dof] * val
+                    f[i] -= k[i, dof] * val
 
-            kc[:, dof] = kc[dof, :] = 0.0
-            kc[dof, dof] = 1.0
-
-        return kc, fc
+            k[:, dof] = k[dof, :] = 0.0
+            k[dof, dof] = 1.0
 
     def constraindiag(self, k, f):
         kc = np.copy(k)

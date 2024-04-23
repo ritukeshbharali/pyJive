@@ -3,6 +3,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as linalg
 
+from scipy.sparse import dok_matrix
 from numpy.linalg import norm as norm
 
 from names import GlobNames as gn
@@ -29,7 +30,7 @@ class NonlinModule(ControlModule):
         dc = globdat[gn.DOFSPACE].dof_count()
         model = globdat[gn.MODEL]
 
-        K = np.zeros((dc, dc))
+        K    = dok_matrix((dc,dc),dtype="float64")
         fext = np.zeros(dc)
         fint = np.zeros(dc)
         c = Constrainer(globdat[gn.STATE0])
@@ -57,12 +58,11 @@ class NonlinModule(ControlModule):
         # Calculate residual
         r = fext - fint
 
-        # Constrain K and fext - fint
-        Kc, rc = c.constrain(K, r)
+        # Constrain K and residual(fext - fint)
+        c.constrain(K, r)
 
-        # Sparsify and solve
-        smat = sparse.csr_matrix(Kc)
-        u = linalg.spsolve(smat, rc)
+        # Solve
+        u = linalg.spsolve(K.tocsr(), r)
 
         # Store solution in Globdat
         globdat[gn.STATE0] += u
@@ -74,14 +74,13 @@ class NonlinModule(ControlModule):
         # Initialize iteration loop
         while rel > self._tolerance and iteration < self._itermax:
             iteration += 1
-            params[pn.MATRIX0] = np.zeros((dc, dc))
+            params[pn.MATRIX0]  = dok_matrix((dc,dc),dtype="float64")
             params[pn.INTFORCE] = np.zeros(dc)
             model.take_action(act.GETMATRIX0, params, globdat)
             r = fext - params[pn.INTFORCE]
             c.set_zero()
-            Kc, rc = c.constrain(params[pn.MATRIX0], r)
-            smat = sparse.csr_matrix(Kc)
-            du = linalg.spsolve(smat, rc)
+            c.constrain(params[pn.MATRIX0], r)
+            du = linalg.spsolve(params[pn.MATRIX0].tocsr(), r)
             globdat[gn.STATE0] += du
             rel = np.linalg.norm(r[np.ix_(fdofs)]) / ref
             print('Iteration %i, relative residual norm: %.4e' % (iteration, rel))
