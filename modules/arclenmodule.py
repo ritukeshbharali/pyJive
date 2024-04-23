@@ -3,6 +3,7 @@ import numpy as np
 import scipy.sparse as sparse
 import scipy.sparse.linalg as linalg
 
+from scipy.sparse import dok_matrix
 from numpy.linalg import norm as norm
 
 from names import GlobNames as gn
@@ -45,7 +46,7 @@ class ArclenModule(ControlModule):
             globdat[gn.LAMBDA] = 0.
             self._duOld = np.zeros(dc)
 
-        K = np.zeros((dc, dc))
+        K = dok_matrix((dc,dc),dtype="float64")
         fint = np.zeros(dc)
         fhat = self._fhat
         c = Constrainer()
@@ -97,7 +98,7 @@ class ArclenModule(ControlModule):
         # Initialize iteration loop
         while rel > self._tolerance and iteration < self._itermax:
             iteration += 1
-            params[pn.MATRIX0] = np.zeros((dc, dc))
+            params[pn.MATRIX0] = dok_matrix((dc,dc),dtype="float64")
             params[pn.INTFORCE] = np.zeros(dc)
             model.take_action(act.GETMATRIX0, params, globdat)
             fext = fext0 + Dlam * fhat
@@ -147,9 +148,8 @@ class ArclenModule(ControlModule):
 
 
 def solveSys(K, f, c):
-    Kc, fc = c.constrain(K, f)
-    smat = sparse.csr_matrix(Kc)
-    u = linalg.spsolve(smat, fc)
+    c.constrain(K, f)
+    u = linalg.spsolve(K.tocsr(), f)
     return u
 
 
