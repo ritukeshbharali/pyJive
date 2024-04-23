@@ -5,6 +5,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Result file extensions
+*.dat
+*.vtu
+
+
 # Distribution / packaging
 bin/
 build/
